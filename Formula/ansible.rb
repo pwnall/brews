@@ -1,8 +1,8 @@
 class Ansible < Formula
   desc "Automate deployment, configuration, and upgrading"
   homepage "https://www.ansible.com/"
-  url "https://releases.ansible.com/ansible/ansible-2.3.0.0.tar.gz"
-  sha256 "299f3907cd566a20e163942fa82b6afc86ef89c2726ba503b90c1a651e82a458"
+  url "https://releases.ansible.com/ansible/ansible-2.3.1.0.tar.gz"
+  sha256 "cd4b8f53720fcd0c351156b840fdd15ecfbec22c951b5406ec503de49d40b9f5"
   head "https://github.com/ansible/ansible.git", :branch => "devel"
 
   depends_on "pkg-config" => :build
@@ -139,8 +139,8 @@ class Ansible < Formula
   end
 
   resource "cryptography" do
-    url "https://files.pythonhosted.org/packages/ec/5f/d5bc241d06665eed93cd8d3aa7198024ce7833af7a67f6dc92df94e00588/cryptography-1.8.1.tar.gz"
-    sha256 "323524312bb467565ebca7e50c8ae5e9674e544951d28a2904a50012a8828190"
+    url "https://files.pythonhosted.org/packages/2a/0c/31bd69469e90035381f0197b48bf71032991d9f07a7e444c311b4a23a3df/cryptography-1.9.tar.gz"
+    sha256 "5518337022718029e367d982642f3e3523541e098ad671672a90b82474c84882"
   end
 
   resource "debtcollector" do
