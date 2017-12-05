@@ -8,10 +8,8 @@ class Tensorflow < Formula
   homepage "https://www.tensorflow.org/"
 
   stable do
-    # TODO: Wait for the next Tensorflow release to ship the formula.
-    # 0.12.1 won't work because of at least 2 bugs that got fixed on master.
-    url "https://github.com/tensorflow/tensorflow/archive/v1.0.0-rc0.tar.gz"
-    sha256 "b3a72576806d07abb3d9285dee00674d807ef10322f63771f35176cd1969c984"
+    url "https://github.com/tensorflow/tensorflow/archive/v1.4.0.tar.gz"
+    sha256 "8a0ad8d61f8f6c0282c548661994a5ab83ac531bac496c3041dedc1ab021107b"
   end
 
   head "https://github.com/tensorflow/tensorflow.git"
@@ -19,8 +17,12 @@ class Tensorflow < Formula
   option "with-build-parallelism", "Enable parallel build (RAM-intensive)"
   option "with-cuda", "Build with CUDA v7.0+ support"
   option "with-gcp", "Build with Google Cloud Platform support"
+  option "with-gdr", "Build with GPUDirect RDMA Out-of-Band Transport support"
   option "with-hdfs", "Build with HDFS support"
+  option "with-mpi", "Build with MPI Distributed Optimizer support"
   option "with-opencl", "Build with OpenCL support"
+  option "with-s3", "Build with Amazon S3 support"
+  option "with-verbs", "Build with InfiniBand verbs support"
   option "with-xla", "Build with XLA support"
 
   needs :cxx11
@@ -31,11 +33,11 @@ class Tensorflow < Formula
   depends_on "coreutils" => :build if build.with? "cuda"
   depends_on "curl" => :optional
   depends_on "eigen"
-  depends_on "gcc" => :optional if build.with? "cuda"
+  depends_on "gcc" => :build if build.with? "cuda"
   depends_on "giflib"
   depends_on "jsoncpp"
   depends_on "hadoop" if build.with? "hdfs"
-  depends_on "jemalloc" => :optional
+  depends_on "jemalloc" if build.with? "jemalloc"
   depends_on "jpeg"
   depends_on "libpng"
   # The line below assumes the newer LLVM formula that includes clang.
@@ -49,6 +51,8 @@ class Tensorflow < Formula
   depends_on "swig" => :build
   depends_on "homebrew/dupes/zlib" => :optional
   depends_on "pwnall/brews/cudainfo" => :build if build.with? "cuda"
+
+  depends_on "caskroom/drivers/nvidia-cuda" => :optional if build.with? "cuda"
 
   with_python = build.with?("python") || build.with?("python3")
   pythons = build.with?("python3") ? ["with-python3"] : []
@@ -88,6 +92,7 @@ class Tensorflow < Formula
     if build.with? "opencl"
       args << "--config=sycl"
       ENV["TF_NEED_OPENCL"] = "1"
+      ENV["TFNEED_OPENCL_SYCL"] = "1"
 
       # Filter out superenv's clang shims.
       ENV["HOST_CXX_COMPILER"] = which_all("clang++").reject do |bin|
@@ -103,12 +108,20 @@ class Tensorflow < Formula
       ENV["SYCL_RT_LIB_PATH"] = "lib/libComputeCpp.dylib"
     else
       ENV["TF_NEED_OPENCL"] = "0"
+      ENV["TF_NEED_OPENCL_SYCL"] = "0"
+      ENV["TF_NEED_COMPUTECPP"] = "0"
     end
 
     if build.with? "gcp"
       ENV["TF_NEED_GCP"] = "1"
     else
       ENV["TF_NEED_GCP"] = "0"
+    end
+
+    if build.with? "gdr"
+      ENV["TF_NEED_GDR"] = "1"
+    else
+      ENV["TF_NEED_GDR"] = "0"
     end
 
     if build.with? "hdfs"
@@ -121,6 +134,26 @@ class Tensorflow < Formula
       ENV["TF_NEED_JEMALLOC"] = "1"
     else
       ENV["TF_NEED_JEMALLOC"] = "0"
+    end
+
+    if build.with? "mpi"
+      ENV["TF_NEED_MPI"] = "1"
+      # TODO: Figure out the rest of the MPI configuration.
+      ENV["MPI_HOME"] = ""
+    else
+      ENV["TF_NEED_MPI"] = "0"
+    end
+
+    if build.with? "s3"
+      ENV["TF_NEED_S3"] = "1"
+    else
+      ENV["TF_NEED_S3"] = "0"
+    end
+
+    if build.with?("gdr") || build.with?("verbs")
+      ENV["TF_NEED_VERBS"] = "1"
+    else
+      ENV["TF_NEED_VERBS"] = "0"
     end
 
     if build.with? "xla"
@@ -141,8 +174,6 @@ class Tensorflow < Formula
     end
 
     args << "//tensorflow:libtensorflow.so"
-    args << "//tensorflow:libtensorflow_c.so"
-    args << "//tensorflow:libtensorflow_cc.so"
     args << "//tensorflow/tools/pip_package:build_pip_package" if build.with? "python"
 
     system "./configure"
@@ -168,8 +199,6 @@ class Tensorflow < Formula
     end
 
     lib.install "bazel-bin/tensorflow/libtensorflow.so"
-    lib.install "bazel-bin/tensorflow/libtensorflow_c.so"
-    lib.install "bazel-bin/tensorflow/libtensorflow_cc.so"
   end
 
   test do
@@ -262,7 +291,7 @@ int main() {
   return 0;
 }
 EOS
-    system ENV.cxx, "-ltensorflow_c", "-o", "tf-test", "tf-test.cc"
+    system ENV.cxx, "-ltensorflow", "-o", "tf-test", "tf-test.cc"
     assert_equal "3 44", Utils.popen_read("./tf-test").strip
   end
 end
